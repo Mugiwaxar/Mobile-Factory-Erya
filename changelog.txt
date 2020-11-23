@@ -1,0 +1,41 @@
+---------------------------------------------------------------------------------------------------
+Version: 0.1.7
+Date: 16/08/2020
+  Features:
+    - Updated to Factorio 1.0
+---------------------------------------------------------------------------------------------------
+Version: 0.1.6
+Date: 13/08/2020
+  Bugfixes:
+    - Fixed a bug where Erya Simple can't be placed inside the Dimensional Lab (Second attempt)
+---------------------------------------------------------------------------------------------------
+Version: 0.1.5
+Date: 31/07/2020
+  Bugfixes:
+    - Fixed a bug where Erya Simple can't be placed inside the Dimensional Lab
+---------------------------------------------------------------------------------------------------
+Version: 0.1.4
+Date: 30/07/2020
+  Bugfixes:
+    - Fixed a crash when a Surface was deleted
+---------------------------------------------------------------------------------------------------
+Version: 0.1.3
+Date: 28/07/2020
+  Optimisations:
+    - Some performances optimization done
+---------------------------------------------------------------------------------------------------
+Version: 0.1.2
+Date: 27/07/2020
+  Bugfixes:
+    - Fixed a compatibility issue with some Mods
+---------------------------------------------------------------------------------------------------
+Version: 0.1.1
+Date: 27/07/2020
+  Features:
+    - Improved snow transitions with the other Tiles
+    - Added Ice: water will now freeze
+---------------------------------------------------------------------------------------------------
+Version: 0.1.0
+Date: 25/07/2020
+  Features:
+    - Created the "Mobile Factory: Erya" Extension

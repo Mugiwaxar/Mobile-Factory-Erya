@@ -1,0 +1,10 @@
+{
+	"name": "Mobile_Factory-Erya",
+	"version": "0.1.7",
+	"title": "Mobile Factory: Erya Tech",
+	"author": "Mugiwaxar",
+	"dependencies": ["base >= 1.0", "Mobile_Factory >= 0.0.192"],
+	"description": "A Mobile Factory Extension: Add an Erya version of some vanilla structures. Those machines are easy to build and require Environmental heat to work (Instead of Energy).",
+	"factorio_version": "1.0",
+	"homepage":"https://mobile-factory.fandom.com/wiki/Mobile_Factory_Wiki"
+}
