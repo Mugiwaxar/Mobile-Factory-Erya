@@ -1,6 +1,6 @@
 {
 	"name": "Mobile_Factory-Erya",
-	"version": "0.1.7",
+	"version": "0.1.8",
 	"title": "Mobile Factory: Erya Tech",
 	"author": "Mugiwaxar",
 	"dependencies": ["base >= 1.0", "Mobile_Factory >= 0.0.192"],
