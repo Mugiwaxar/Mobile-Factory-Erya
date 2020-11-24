@@ -334,3 +334,19 @@ end
 script.on_init(onInit)
 script.on_event(defines.events.on_tick, onTick)
 script.on_event(defines.events.on_chunk_generated, onNewChunk)
+
+
+--------------------------- Interface ---------------------------
+
+-- Return the Chunk Temperature --
+function getChunkTemp(surfaceIndex, x, y)
+    if global.chunksTable3D == nil or global.chunksTable3D[surfaceIndex] == nil or global.chunksTable3D[surfaceIndex][x] == nil or global.chunksTable3D[surfaceIndex][x][y] == nil or global.chunksTable3D[surfaceIndex][x][y].temp == nil then
+        return 20
+    end
+    return global.chunksTable3D[surfaceIndex][x][y].temp
+end
+
+-- Create the Interface --
+remote.add_interface("EryaCom", {
+    getChunkTemp=getChunkTemp,
+})
