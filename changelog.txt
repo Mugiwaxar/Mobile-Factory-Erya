@@ -1,8 +1,13 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.2.0
+Date: 12/12/2020
+  Features:
+    - Update to Factorio 1.1
+---------------------------------------------------------------------------------------------------
 Version: 0.1.8
 Date: 24/11/2020
   Features:
-    - Allow the Mobile Factory mod to show a Chunk temperature inside the Main GUI
+    - Allows the Mobile Factory mod to shows a Chunk temperature inside the Main GUI
 ---------------------------------------------------------------------------------------------------
 Version: 0.1.7
 Date: 16/08/2020
