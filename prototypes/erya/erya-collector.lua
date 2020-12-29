@@ -13,17 +13,16 @@ ecE.corpse = "small-remnants"
 ecE.collision_box = {{-2.5, -2.35}, {2.5, 2.35}}
 ecE.selection_box = ecE.collision_box
 ecE.vehicle_impact_sound =  { filename = "__base__/sound/car-wood-impact.ogg", volume = 1.0 }
-ecE.energy_usage = "250kW"
+ecE.energy_usage = "1W"
 ecE.crafting_speed = 1
 ecE.crafting_categories = {"EryaPowder"}
 ecE.collision_mask = {"ground-tile"}
 ecE.fixed_recipe = "EryaPowder2"
 ecE.energy_source =
 {
-    type="electric",
-    buffer_capacity = "3MJ",
-    usage_priority = "secondary-input",
-    input_flow_limit = "500KW"
+    type="void",
+    render_no_power_icon = false,
+    render_no_network_icon = false
 
 }
 ecE.animation =
@@ -59,8 +58,8 @@ ecI.name = "EryaCollector"
 ecI.icon = "__Mobile_Factory-Erya__/graphics/Erya/EryaCollectorI.png"
 ecI.icon_size = 256
 ecI.place_result = "EryaCollector"
-ecI.subgroup = "DimensionalStuff"
-ecI.order = "z"
+ecI.subgroup = "EryaRessources"
+ecI.order = "a"
 ecI.stack_size = 10
 data:extend{ecI}
 
