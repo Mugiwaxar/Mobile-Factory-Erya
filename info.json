@@ -1,7 +1,7 @@
 {
 	"name": "Mobile_Factory-Erya",
 	"version": "0.3.0",
-	"title": "Mobile Factory: Erya Tech",
+	"title": "MF: Erya Tech",
 	"author": "Mugiwaxar",
 	"dependencies": ["base >= 1.1", "MF_Base >= 0.1.0"],
 	"description": "Add an Erya version of some vanilla structures. Those machines are easy to build and require Environmental heat to work (Instead of Energy).",
