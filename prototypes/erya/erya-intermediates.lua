@@ -5,7 +5,7 @@ epI.name = "EryaPowder"
 epI.icon = "__Mobile_Factory-Erya__/graphics/Erya/EryaPowder.png"
 epI.icon_size = 256
 epI.subgroup = "EryaRessources"
-epI.order = "a"
+epI.order = "b"
 epI.stack_size = 1000
 data:extend{epI}
 
@@ -45,7 +45,7 @@ esI.icon_size = 256
 esI.subgroup = "EryaRessources"
 esI.durability = 1
 esI.infinite = false
-esI.order = "b"
+esI.order = "c"
 esI.stack_size = 1000
 data:extend{esI}
 

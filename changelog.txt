@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.3.0
+Date: 29/12/2020
+  Features:
+    - Mobile Factory is not longer a mandatory Dependency, the Mod require now MF: Base
+  Changes:
+    - The Erya collector not longer requires an Energy Source to work
+---------------------------------------------------------------------------------------------------
 Version: 0.2.0
 Date: 12/12/2020
   Features:
