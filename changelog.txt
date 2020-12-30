@@ -1,8 +1,10 @@
 ---------------------------------------------------------------------------------------------------
-Version: 0.3.1
+Version: 0.4.0
 Date: 29/12/2020
   Features:
-    - Added compatibility with the New Erya Tech Script
+    - Full rewrite of the Script for increased performances
+    - The Snow/Ice should now be more reactive
+    - Added the Show/Hide Debug Option (Can be set inside the Mobile Factory Option GUI - System)
 ---------------------------------------------------------------------------------------------------
 Version: 0.3.0
 Date: 29/12/2020

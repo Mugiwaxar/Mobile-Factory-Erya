@@ -27,8 +27,8 @@ addedTemperature = 0.25
 -- At under which Temperature du frost spread --
 spreadTemperature = -10
 
--- Number of check before a valid Tile was found --
-validTileCheck = 1
+-- Higher is this number, slower the temperature will spread --
+spreadFactor = 5
 
 
 -- Erya Structures that freeze the environment --
@@ -106,6 +106,9 @@ function onInit()
     -- The Update Index to know where the Chunk Table have to be updated --
     global.chunkTableIndex = 0
 
+    -- Show the Debug --
+    global.showDebug = false
+
 end
 
 -- Called every Tick --
@@ -120,6 +123,7 @@ function onTick()
 
     -- Update the Chunk Table --
     local chunkUpdated = 0
+    local maxChunkUpdateCalculated = math.min(maxChunkUpdate, math.floor(size/chunkUpdateTime)+1)
     for _=1, math.min(maxTileCheck, size) do
 
         -- Get the Chunk --
@@ -142,7 +146,7 @@ function onTick()
                 -- Update the Chunk --
                 updateChunk(chunk, global.chunkTableIndex+1)
                 chunkUpdated = chunkUpdated + 1
-                if chunkUpdated > maxChunkUpdate then break end
+                if chunkUpdated > maxChunkUpdateCalculated then break end
             end
             
         end
@@ -162,22 +166,6 @@ function updateChunk(chunk, key)
         for _, ent in pairs(eryaEnts) do
             chunk.temp = math.max(chunk.temp - (heatCost[ent.name] or 0), minTemperature)
         end
-    end
-
-    -- Draw the Temperature Rectangle --
-    rendering.draw_rectangle{color={255,0,0}, width=5, left_top=chunk.area.left_top, right_bottom=chunk.area.right_bottom, surface=game.get_surface(chunk.surfaceIndex), time_to_live=30}
-    if chunk.temp > 15 then
-        rendering.draw_rectangle{color={42,255,0,0.1}, filled=true, left_top=chunk.area.left_top, right_bottom=chunk.area.right_bottom, surface=game.get_surface(chunk.surfaceIndex), time_to_live=chunkUpdateTime+1}
-    elseif chunk.temp > 5 then
-        rendering.draw_rectangle{color={31,174,3,0.1}, filled=true, left_top=chunk.area.left_top, right_bottom=chunk.area.right_bottom, surface=game.get_surface(chunk.surfaceIndex), time_to_live=chunkUpdateTime+1}
-    elseif chunk.temp > 0 then
-        rendering.draw_rectangle{color={0,205,205,0.1}, filled=true, left_top=chunk.area.left_top, right_bottom=chunk.area.right_bottom, surface=game.get_surface(chunk.surfaceIndex), time_to_live=chunkUpdateTime+1}
-    elseif chunk.temp > -15 then
-        rendering.draw_rectangle{color={0,162,205,0.1}, filled=true, left_top=chunk.area.left_top, right_bottom=chunk.area.right_bottom, surface=game.get_surface(chunk.surfaceIndex), time_to_live=chunkUpdateTime+1}
-    elseif chunk.temp > -100 then
-        rendering.draw_rectangle{color={87,140,255,0.1}, filled=true, left_top=chunk.area.left_top, right_bottom=chunk.area.right_bottom, surface=game.get_surface(chunk.surfaceIndex), time_to_live=chunkUpdateTime+1}
-    else
-        rendering.draw_rectangle{color={0,12,255,0.1}, filled=true, left_top=chunk.area.left_top, right_bottom=chunk.area.right_bottom, surface=game.get_surface(chunk.surfaceIndex), time_to_live=chunkUpdateTime+1}
     end
 
     -- Increase the Temperature --
@@ -201,6 +189,17 @@ function updateChunk(chunk, key)
     -- Update the Tiles --
     updateTiles(chunk)
 
+    -- Draw the Temperature Rectangle --
+    if global.showDebug ~= true then return end
+    rendering.draw_rectangle{color={255,0,0}, width=5, left_top=chunk.area.left_top, right_bottom=chunk.area.right_bottom, surface=game.get_surface(chunk.surfaceIndex), time_to_live=20}
+    if chunk.temp > 10 then
+        rendering.draw_rectangle{color={0,200,0,150}, filled=true, left_top=chunk.area.left_top, right_bottom=chunk.area.right_bottom, surface=game.get_surface(chunk.surfaceIndex), time_to_live=chunkUpdateTime+30}
+    elseif chunk.temp > -150 then
+        rendering.draw_rectangle{color={0,12,255,150}, filled=true, left_top=chunk.area.left_top, right_bottom=chunk.area.right_bottom, surface=game.get_surface(chunk.surfaceIndex), time_to_live=chunkUpdateTime+30}
+    else
+        rendering.draw_rectangle{color={87,140,255,150}, filled=true, left_top=chunk.area.left_top, right_bottom=chunk.area.right_bottom, surface=game.get_surface(chunk.surfaceIndex), time_to_live=chunkUpdateTime+30}
+    end
+
 end
 
 -- Spread the Frost to the 8 surrounding Chunks --
@@ -219,10 +218,12 @@ function spreadFrost(chunk)
         local table2 = table1[iChunk.x]
         if table2 ~= nil then
             local table3 = table2[iChunk.y]
-            if table3 ~= nil and table3.temp > (minTemperature+(chunk.temp/10)) then
-                -- Update the Temperature --
-                table3.temp = math.max(table3.temp + chunk.temp/10, minTemperature)
-                chunk.temp = chunk.temp - chunk.temp/10
+            if table3 ~= nil then
+                if table3.temp > (minTemperature+(chunk.temp/spreadFactor)) and chunk.temp < table3.temp then
+                    -- Update the Temperature --
+                    table3.temp = math.max(table3.temp + chunk.temp/spreadFactor, minTemperature)
+                    chunk.temp = chunk.temp - chunk.temp/spreadFactor
+                end
                 return
             end
         end
@@ -243,40 +244,34 @@ end
 
 -- Update the Chunk Tiles --
 function updateTiles(chunkObj)
-    -- Create the Loop --
-    for i=1, validTileCheck do
-        -- Get random Locations --
-        local x = math.random(1,chunkSize)
-        local y = math.random(1,chunkSize)
-        x = x + chunkObj.area.left_top.x - 1
-        y = y + chunkObj.area.left_top.y - 1
-        -- Get the Tile --
-        local tile = game.get_surface(chunkObj.surfaceIndex).get_tile(x,y)
-        -- Check the Tile --
-        if tile ~= nil and tile.valid == true then
-            -- Check if the Tile is a Snow Tile --
-            if tile.name == "MFSnowTile1" or tile.name == "MFIceTile1" then
-                -- Check if the snow have to melt or be created --
-                if chunkObj.temp > 0 then
-                    -- Check if there are an Hiden_Tile --
-                    if tile.hidden_tile ~= nil and game.tile_prototypes[tile.hidden_tile] ~= nil then
-                        tile.surface.set_tiles({{name=tile.hidden_tile, position=tile.position}})
-                        break
-                    else
-                        tile.surface.set_tiles({{name="dirt-7", position=tile.position}})
-                        break
-                    end
-                end
-            elseif tile.name ~= "MFSnowTile1" and chunkObj.temp <= 0 then
-                -- Save the Old Tile --
-                tile.surface.set_hidden_tile(tile.position, tile.name)
-                -- Create Snow Tiles --
-                local tileName = waterTiles[tile.name] == nil and "MFSnowTile1" or "MFIceTile1"
-                tile.surface.set_tiles({{name=tileName, position=tile.position}})
-                break
-            end
+
+    -- Get random Locations --
+    local x = math.random(1,chunkSize)
+    local y = math.random(1,chunkSize)
+    x = x + chunkObj.area.left_top.x - 1
+    y = y + chunkObj.area.left_top.y - 1
+
+    -- Get the Tile --
+    local tile = game.get_surface(chunkObj.surfaceIndex).get_tile(x,y)
+
+    -- Check the Tile --
+    if tile == nil or tile.valid == false then return end
+
+    -- Check if Snow/Ice have to be created --
+    if chunkObj.temp < 0 and tile.name ~= "MFSnowTile1" and tile.name ~= "MFIceTile1" then
+        -- Save the Old Tile --
+        tile.surface.set_hidden_tile(tile.position, tile.name)
+        -- Create Snow/Ice Tiles --
+        local tileName = waterTiles[tile.name] == nil and "MFSnowTile1" or "MFIceTile1"
+        tile.surface.set_tiles({{name=tileName, position=tile.position}})
+    elseif chunkObj.temp > 0 and (tile.name == "MFSnowTile1" or tile.name == "MFIceTile1") then
+        if tile.hidden_tile ~= nil and game.tile_prototypes[tile.hidden_tile] ~= nil then
+            tile.surface.set_tiles({{name=tile.hidden_tile, position=tile.position}})
+        else
+            tile.surface.set_tiles({{name="dirt-7", position=tile.position}})
         end
     end
+    
 end
 
 -- Called when Something was placed --
@@ -363,7 +358,13 @@ function getChunkTemp(surfaceIndex, posX, posY)
     return global.chunksTable3D[surfaceIndex][x][y].temp
 end
 
+-- Show/Hide the Debug Information --
+function showDebug(set)
+    global.showDebug = set
+end
+
 -- Create the Interface --
 remote.add_interface("EryaCom", {
     getChunkTemp=getChunkTemp,
+    showDebug=showDebug
 })
