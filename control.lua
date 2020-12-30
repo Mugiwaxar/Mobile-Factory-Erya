@@ -1,37 +1,41 @@
 pcall(require,'__debugadapter__/debugadapter.lua')
 
 -- How many Tick between each Chunk Update --
-local chunkUpdateTime = 180
+chunkUpdateTime = 300
+
+-- The max Chunks checked per tick --
+maxTileCheck = 100
 
 -- The max Chunks updated per tick --
-local maxChunkUpdate = 15
+maxChunkUpdate = 15
 
 -- The size of a Chunk --
-local chunkSize = 4
+chunkSize = 4
 
 -- The initial temperature --
-local initialTemperature = 20 -- °C --
+initialTemperature = 20 -- °C --
 
 -- The maximum natural temperature --
-local maxNaturalTemperature = 20 -- °C --
+maxNaturalTemperature = 20 -- °C --
 
 -- The minimal temperature --
-local minTemperature = -50 -- °C --
+minTemperature = -273 -- °C --
 
 -- How many degrees is added per Update --
-local addedTemperature = 0.01
+addedTemperature = 0.25
 
 -- At under which Temperature du frost spread --
-local spreadTemperature = -5
+spreadTemperature = -10
 
 -- Number of check before a valid Tile was found --
-local validTileCheck = 10
+validTileCheck = 1
 
 
 -- Erya Structures that freeze the environment --
-local frozenStructures = {
+frozenStructures = {
                         "EryaLamp",
                         "EryaChest1",
+                        "EryaTank1",
                         "EryaBelt1",
                         "EryaItemMover",
                         "EryaUndergroundBelt1",
@@ -56,7 +60,7 @@ local frozenStructures = {
                     }
 
 -- List of Tiles that must be replaced by Ice --
-local waterTiles = {}
+waterTiles = {}
 waterTiles["deepwater"] = true
 waterTiles["deepwater-green"] = true
 waterTiles["water"] = true
@@ -66,30 +70,31 @@ waterTiles["water-mud"] = true
 waterTiles["MFIceTile1"] = true
 
 -- The amount of temperature that a Erya structure decrease (in °C) --
-local heatCost = {}
-heatCost["EryaLamp"] = 0.05
-heatCost["EryaChest1"] = 0.03
-heatCost["EryaBelt1"] = 0.01
-heatCost["EryaItemMover"] = 0.02
-heatCost["EryaUndergroundBelt1"] = 0.015
-heatCost["EryaUndergroundBelt2"] = 0.015
-heatCost["EryaSplitter1"] = 0.02
-heatCost["EryaSplitter2"] = 0.03
-heatCost["EryaLoader1"] = 0.02
-heatCost["EryaLoader2"] = 0.03
-heatCost["EryaInserter1"] = 0.05
-heatCost["EryaMiningDrill1"] = 0.1
-heatCost["EryaPumpjack1"] = 0.1
-heatCost["EryaAssemblingMachine1"] = 0.1
-heatCost["EryaPipe1"] = 0.01
-heatCost["EryaPipeToGround1"] = 0.015
-heatCost["EryaPump1"] = 0.03
-heatCost["EryaWall1"] = 0.01
-heatCost["EryaGate1"] = 0.03
-heatCost["EryaRadar1"] = 0.15
-heatCost["EryaFurnace1"] = 0.12
-heatCost["EryaRefinery1"] = 0.15
-heatCost["EryaChemicalPlant1"] = 0.15
+heatCost = {}
+heatCost["EryaLamp"] = 5
+heatCost["EryaChest1"] = 3
+heatCost["EryaTank1"] = 5
+heatCost["EryaBelt1"] = 1
+heatCost["EryaItemMover"] = 2
+heatCost["EryaUndergroundBelt1"] = 1.5
+heatCost["EryaUndergroundBelt2"] = 1.5
+heatCost["EryaSplitter1"] = 2
+heatCost["EryaSplitter2"] = 3
+heatCost["EryaLoader1"] = 2
+heatCost["EryaLoader2"] = 3
+heatCost["EryaInserter1"] = 5
+heatCost["EryaMiningDrill1"] = 10
+heatCost["EryaPumpjack1"] = 10
+heatCost["EryaAssemblingMachine1"] = 10
+heatCost["EryaPipe1"] = 1
+heatCost["EryaPipeToGround1"] = 1.5
+heatCost["EryaPump1"] = 3
+heatCost["EryaWall1"] = 1
+heatCost["EryaGate1"] = 3
+heatCost["EryaRadar1"] = 15
+heatCost["EryaFurnace1"] = 12
+heatCost["EryaRefinery1"] = 15
+heatCost["EryaChemicalPlant1"] = 15
 
 -- When the Mod load for the first time --
 function onInit()
@@ -99,7 +104,7 @@ function onInit()
     global.chunksTable3D = {}
 
     -- The Update Index to know where the Chunk Table have to be updated --
-    global.chunkTableIndex = 1
+    global.chunkTableIndex = 0
 
 end
 
@@ -107,34 +112,40 @@ end
 function onTick()
 
     -- Check the Chunk Table Index --
+    local size = table_size(global.chunksTable)
     global.chunkTableIndex = global.chunkTableIndex or 1
-    if global.chunkTableIndex > table_size(global.chunksTable) then global.chunkTableIndex = 1 end
-    if table_size(global.chunksTable) <= 0 then return end
+    if global.chunkTableIndex >= size then global.chunkTableIndex = 0 end
 
     -- game.print(table_size(global.chunksTable))
 
     -- Update the Chunk Table --
-    for i=1, maxChunkUpdate do
+    local chunkUpdated = 0
+    for _=1, math.min(maxTileCheck, size) do
 
         -- Get the Chunk --
-        local chunk = global.chunksTable[global.chunkTableIndex]
+        local _, chunk = next(global.chunksTable, global.chunkTableIndex ~= 0 and global.chunkTableIndex or nil)
 
         -- Check the Chunk --
-        if chunk == nil then goto continue end
-        if chunk.surface == nil then removeChunk(chunk, global.chunkTableIndex) goto continue end
-        if chunk.surface.valid == false then removeChunk(chunk, global.chunkTableIndex) goto continue end
+        if chunk == nil then break end
 
         -- Check if the Chunk has to be updated --
-        if (game.tick - (chunk.lastCheck or 0)) < chunkUpdateTime then goto continue end
+        if (game.tick - (chunk.lastCheck or 0)) > chunkUpdateTime then
 
-        -- Save the Last Update --
-        chunk.lastCheck = game.tick
+            -- Save the Last Update --
+            chunk.lastCheck = game.tick
 
-        -- Update the Chunk --
-        updateChunk(chunk, global.chunkTableIndex)
-
-        -- End of the Loop --
-        ::continue::
+            -- Check the Surface --
+            local surface = game.get_surface(chunk.surfaceIndex)
+            if surface == nil or surface.valid == false then
+                removeChunk(chunk, global.chunkTableIndex+1)
+            else
+                -- Update the Chunk --
+                updateChunk(chunk, global.chunkTableIndex+1)
+                chunkUpdated = chunkUpdated + 1
+                if chunkUpdated > maxChunkUpdate then break end
+            end
+            
+        end
 
         -- Increase the Index --
         global.chunkTableIndex = global.chunkTableIndex + 1
@@ -146,11 +157,27 @@ end
 function updateChunk(chunk, key)
 
     -- Decrease the Temperature for every Erya Tech present --
-    local eryaEnts = chunk.surface.find_entities_filtered{area=chunk.area, name=frozenStructures}
+    local eryaEnts = game.get_surface(chunk.surfaceIndex).find_entities_filtered{area=chunk.area, name=frozenStructures}
     if table_size(eryaEnts) > 0 then
         for _, ent in pairs(eryaEnts) do
             chunk.temp = math.max(chunk.temp - (heatCost[ent.name] or 0), minTemperature)
         end
+    end
+
+    -- Draw the Temperature Rectangle --
+    rendering.draw_rectangle{color={255,0,0}, width=5, left_top=chunk.area.left_top, right_bottom=chunk.area.right_bottom, surface=game.get_surface(chunk.surfaceIndex), time_to_live=30}
+    if chunk.temp > 15 then
+        rendering.draw_rectangle{color={42,255,0,0.1}, filled=true, left_top=chunk.area.left_top, right_bottom=chunk.area.right_bottom, surface=game.get_surface(chunk.surfaceIndex), time_to_live=chunkUpdateTime+1}
+    elseif chunk.temp > 5 then
+        rendering.draw_rectangle{color={31,174,3,0.1}, filled=true, left_top=chunk.area.left_top, right_bottom=chunk.area.right_bottom, surface=game.get_surface(chunk.surfaceIndex), time_to_live=chunkUpdateTime+1}
+    elseif chunk.temp > 0 then
+        rendering.draw_rectangle{color={0,205,205,0.1}, filled=true, left_top=chunk.area.left_top, right_bottom=chunk.area.right_bottom, surface=game.get_surface(chunk.surfaceIndex), time_to_live=chunkUpdateTime+1}
+    elseif chunk.temp > -15 then
+        rendering.draw_rectangle{color={0,162,205,0.1}, filled=true, left_top=chunk.area.left_top, right_bottom=chunk.area.right_bottom, surface=game.get_surface(chunk.surfaceIndex), time_to_live=chunkUpdateTime+1}
+    elseif chunk.temp > -100 then
+        rendering.draw_rectangle{color={87,140,255,0.1}, filled=true, left_top=chunk.area.left_top, right_bottom=chunk.area.right_bottom, surface=game.get_surface(chunk.surfaceIndex), time_to_live=chunkUpdateTime+1}
+    else
+        rendering.draw_rectangle{color={0,12,255,0.1}, filled=true, left_top=chunk.area.left_top, right_bottom=chunk.area.right_bottom, surface=game.get_surface(chunk.surfaceIndex), time_to_live=chunkUpdateTime+1}
     end
 
     -- Increase the Temperature --
@@ -159,11 +186,10 @@ function updateChunk(chunk, key)
     -- Check if the Chunk has to be removed --
     if chunk.temp >= maxNaturalTemperature then
         -- Check if there are no Frozen Tiles left --
-        if table_size(chunk.surface.find_tiles_filtered{area=chunk.area, name = "MFSnowTile1"} or {}) <= 0 then
-            if table_size(chunk.surface.find_tiles_filtered{area=chunk.area, name = "MFIceTile1"} or {}) <= 0 then
+        if table_size(game.get_surface(chunk.surfaceIndex).find_tiles_filtered{area=chunk.area, name = "MFSnowTile1"} or {}) <= 0 then
+            if table_size(game.get_surface(chunk.surfaceIndex).find_tiles_filtered{area=chunk.area, name = "MFIceTile1"} or {}) <= 0 then
                 removeChunk(chunk, key)
             end
-
         end
     end
 
@@ -180,42 +206,38 @@ end
 -- Spread the Frost to the 8 surrounding Chunks --
 function spreadFrost(chunk)
 
-    -- Create the Chunks List --
-    local chunkList = {
-        {x=chunk.x-1, y=chunk.y-1},
-        {x=chunk.x,   y=chunk.y-1},
-        {x=chunk.x+1, y=chunk.y-1},
-        {x=chunk.x-1, y=chunk.y},
-        {x=chunk.x+1, y=chunk.y},
-        {x=chunk.x-1, y=chunk.y+1},
-        {x=chunk.x,   y=chunk.y+1},
-        {x=chunk.x+1, y=chunk.y+1}
-    }
+    -- Get a random X and Y to spread --
+    local rX = math.random(-1, 1)
+    local rY = math.random(-1, 1)
 
-    -- Update all Chunk of the List --
-    for _, iChunk in pairs(chunkList) do
+    -- Get the random Chunk --
+    local iChunk = {x=chunk.x + rX, y=chunk.y + rY}
 
-        -- Check if the Chunk already exist inside the Chunk Table --
-        if global.chunksTable3D[chunk.surface.index] ~= nil and global.chunksTable3D[chunk.surface.index][iChunk.x] ~= nil and global.chunksTable3D[chunk.surface.index][iChunk.x][iChunk.y] ~= nil then
-            -- Check if the Temperature can Spread --
-            if global.chunksTable3D[chunk.surface.index][iChunk.x][iChunk.y].temp > (minTemperature+(chunk.temp/10)) then
+    -- Check if the Chunk already exist inside the Chunk Table --
+    local table1 = global.chunksTable3D[chunk.surfaceIndex]
+    if table1 ~= nil then
+        local table2 = table1[iChunk.x]
+        if table2 ~= nil then
+            local table3 = table2[iChunk.y]
+            if table3 ~= nil and table3.temp > (minTemperature+(chunk.temp/10)) then
                 -- Update the Temperature --
-                global.chunksTable3D[chunk.surface.index][iChunk.x][iChunk.y].temp = math.max(global.chunksTable3D[chunk.surface.index][iChunk.x][iChunk.y].temp + chunk.temp/10, minTemperature)
+                table3.temp = math.max(table3.temp + chunk.temp/10, minTemperature)
                 chunk.temp = chunk.temp - chunk.temp/10
+                return
             end
-        else
-            -- Create the Area --
-            local x1 = iChunk.x * chunkSize
-            local y1 = iChunk.y * chunkSize
-            local x2 = x1 + chunkSize
-            local y2 = y1 + chunkSize
-            local area = {left_top = {x=x1, y=y1}, right_bottom = {x=x2, y=y2}}
-            -- Save the Chunk inside the Chunks Tables --
-            local savedChunk = saveChunk(iChunk.x, iChunk.y, area, chunk.surface)
-            savedChunk.temp = math.max(initialTemperature + chunk.temp/10)
         end
-        ::continue::
     end
+
+    -- Create the Area --
+    local x1 = iChunk.x * chunkSize
+    local y1 = iChunk.y * chunkSize
+    local x2 = x1 + chunkSize
+    local y2 = y1 + chunkSize
+    local area = {left_top = {x=x1, y=y1}, right_bottom = {x=x2, y=y2}}
+
+    -- Save the Chunk inside the Chunks Tables --
+    local savedChunk = saveChunk(iChunk.x, iChunk.y, area, chunk.surfaceIndex)
+    savedChunk.temp = math.max(initialTemperature + chunk.temp/10)
 
 end
 
@@ -229,7 +251,7 @@ function updateTiles(chunkObj)
         x = x + chunkObj.area.left_top.x - 1
         y = y + chunkObj.area.left_top.y - 1
         -- Get the Tile --
-        local tile = chunkObj.surface.get_tile(x,y)
+        local tile = game.get_surface(chunkObj.surfaceIndex).get_tile(x,y)
         -- Check the Tile --
         if tile ~= nil and tile.valid == true then
             -- Check if the Tile is a Snow Tile --
@@ -285,43 +307,33 @@ function somethingWasPlaced(event)
         -- The chunk exist, do nothing --
     else
         -- Save the Chunk inside the Chunks Tables --
-        saveChunk(cx, cy, area, ent.surface)
+        saveChunk(cx, cy, area, ent.surface.index)
     end
 
 end
 
 -- Save a Chunk inside the Chunks Tables --
-function saveChunk(posX, posY, area, surface)
+function saveChunk(posX, posY, area, surfaceIndex)
     -- Create the Chunk Table --
-    local chunkTable = {surface=surface, x=posX, y=posY, area=area, temp=initialTemperature, lastCheck=nil}
+    local chunkTable = {surfaceIndex=surfaceIndex, x=posX, y=posY, area=area, temp=initialTemperature, lastCheck=nil}
     -- Save the Chunk inside the 3D Chunk Table --
-    global.chunksTable3D[surface.index] = global.chunksTable3D[surface.index] or {}
-    global.chunksTable3D[surface.index][posX] = global.chunksTable3D[surface.index][posX] or {}
-    global.chunksTable3D[surface.index][posX][posY] = global.chunksTable3D[surface.index][posX][posY] or chunkTable
+    global.chunksTable3D[surfaceIndex] = global.chunksTable3D[surfaceIndex] or {}
+    global.chunksTable3D[surfaceIndex][posX] = global.chunksTable3D[surfaceIndex][posX] or {}
+    global.chunksTable3D[surfaceIndex][posX][posY] = global.chunksTable3D[surfaceIndex][posX][posY] or chunkTable
     -- Save the Chunk inside the Chunk Table --
-    table.insert(global.chunksTable, global.chunksTable3D[surface.index][posX][posY])
+    table.insert(global.chunksTable, global.chunksTable3D[surfaceIndex][posX][posY])
     -- Return the chunk --
-    return global.chunksTable3D[surface.index][posX][posY]
+    return global.chunksTable3D[surfaceIndex][posX][posY]
 end
 
 -- Remove a Chunk from the Chunks Tables --
 function removeChunk(chunk, key)
 
     -- Try to Remove the Chunk from the 3D Table --
-    if chunk.surface ~= nil and chunk.surface.valid == true then
-        if global.chunksTable3D[chunk.surface.index] ~= nil and global.chunksTable3D[chunk.surface.index][chunk.x] ~= nil and global.chunksTable3D[chunk.surface.index][chunk.x][chunk.y] ~= nil then
-            global.chunksTable3D[chunk.surface.index][chunk.x][chunk.y] = nil
-            if table_size(global.chunksTable3D[chunk.surface.index][chunk.x]) <= 0 then global.chunksTable3D[chunk.surface.index][chunk.x] = nil end
-            if table_size(global.chunksTable3D[chunk.surface.index]) <= 0 then global.chunksTable3D[chunk.surface.index] = nil end
-        end
-    else
-        for _, surfaceTable in pairs(global.chunksTable3D) do
-            if surfaceTable[chunk.x] ~= nil and surfaceTable[chunk.x][chunk.y] ~= nil and surfaceTable[chunk.x][chunk.y] == chunk then
-                surfaceTable[chunk.x][chunk.y] = nil
-                if table_size(global.chunksTable3D[chunk.surface.index][chunk.x]) <= 0 then global.chunksTable3D[chunk.surface.index][chunk.x] = nil end
-                if table_size(global.chunksTable3D[chunk.surface.index]) <= 0 then global.chunksTable3D[chunk.surface.index] = nil end
-            end
-        end
+    if global.chunksTable3D[chunk.surfaceIndex] ~= nil and global.chunksTable3D[chunk.surfaceIndex][chunk.x] ~= nil and global.chunksTable3D[chunk.surfaceIndex][chunk.x][chunk.y] ~= nil then
+        global.chunksTable3D[chunk.surfaceIndex][chunk.x][chunk.y] = nil
+        if table_size(global.chunksTable3D[chunk.surfaceIndex][chunk.x]) <= 0 then global.chunksTable3D[chunk.surfaceIndex][chunk.x] = nil end
+        if table_size(global.chunksTable3D[chunk.surfaceIndex]) <= 0 then global.chunksTable3D[chunk.surfaceIndex] = nil end
     end
 
     -- Remove the Chunk from Chunk Table --
